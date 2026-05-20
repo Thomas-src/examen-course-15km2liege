@@ -1,0 +1,14 @@
+{
+  "name": "examen-juin2026-complet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "vitest": "^4.1.0"
+  }
+}
