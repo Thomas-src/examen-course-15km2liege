@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>15km de Liège – Salle de presse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════
+       EN-TÊTE GLOBAL
+  ══════════════════════════════════════════════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="brand-icon" aria-hidden="true">🏃</span>
+        <div>
+          <h1 class="brand-title">15km de Liège</h1>
+          <p class="brand-subtitle">Salle de presse – Résultats en direct</p>
+        </div>
+      </div>
+      <nav class="header-nav" aria-label="Navigation principale">
+        <a href="#screen-accueil"   class="nav-link nav-link--active" data-screen="accueil">Accueil</a>
+        <a href="#screen-7km"       class="nav-link"                  data-screen="7km">7 km</a>
+        <a href="#screen-15km"      class="nav-link"                  data-screen="15km">15 km</a>
+      </nav>
+      <button type="button" class="btn btn--reset" id="btn-reset" title="Réinitialiser la simulation">
+        ↺ Nouvelle simulation
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════
+       OVERLAY DE CHARGEMENT
+  ══════════════════════════════════════════════════════ -->
+  <aside id="loading-overlay" class="loading-overlay" aria-live="polite" aria-label="Chargement en cours">
+    <div class="loading-box">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p id="loading-title" class="loading-title">Chargement des courses…</p>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════
+       TOAST (messages de confirmation / erreur)
+  ══════════════════════════════════════════════════════ -->
+  <aside id="toast-container" class="toast-container" aria-live="assertive" aria-atomic="true"></aside>
+
+  <!-- ══════════════════════════════════════════════════════
+       ÉCRAN ACCUEIL
+  ══════════════════════════════════════════════════════ -->
+  <main id="screen-accueil" class="screen screen--active">
+    <section class="accueil-hero">
+      <h2 class="accueil-titre">Choisissez une course</h2>
+      <p class="accueil-description">
+        Sélectionnez une course pour suivre les résultats en direct, vague par vague.
+      </p>
+      <div class="accueil-cards">
+
+        <article class="course-card" data-course="7km">
+          <header class="course-card__header">
+            <span class="course-card__distance">7</span>
+            <span class="course-card__unit">km</span>
+          </header>
+          <div class="course-card__body">
+            <dl class="course-card__meta">
+              <div class="meta-row">
+                <dt>Départ</dt>
+                <dd>09h30</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Vagues</dt>
+                <dd>3</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Coureurs</dt>
+                <dd>71</dd>
+              </div>
+            </dl>
+            <div class="course-card__progress">
+              <div class="progress-bar">
+                <div class="progress-bar__fill" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+              <p class="progress-label">0 / 71 arrivés</p>
+            </div>
+          </div>
+          <footer class="course-card__footer">
+            <a href="#screen-7km" class="btn btn--primary" data-screen="7km">Suivre cette course →</a>
+          </footer>
+        </article>
+
+        <article class="course-card" data-course="15km">
+          <header class="course-card__header">
+            <span class="course-card__distance">15</span>
+            <span class="course-card__unit">km</span>
+          </header>
+          <div class="course-card__body">
+            <dl class="course-card__meta">
+              <div class="meta-row">
+                <dt>Départ</dt>
+                <dd>10h00</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Vagues</dt>
+                <dd>3</dd>
+              </div>
+              <div class="meta-row">
+                <dt>Coureurs</dt>
+                <dd>75</dd>
+              </div>
+            </dl>
+            <div class="course-card__progress">
+              <div class="progress-bar">
+                <div class="progress-bar__fill" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+              <p class="progress-label">0 / 75 arrivés</p>
+            </div>
+          </div>
+          <footer class="course-card__footer">
+            <a href="#screen-15km" class="btn btn--primary" data-screen="15km">Suivre cette course →</a>
+          </footer>
+        </article>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════
+       ÉCRAN 7KM
+  ══════════════════════════════════════════════════════ -->
+  <main id="screen-7km" class="screen" hidden>
+
+    <div class="screen-inner">
+
+      <!-- Barre de contrôle vagues -->
+      <section class="vagues-control" aria-label="Contrôle des vagues – 7km">
+        <h2 class="screen-title">
+          <span class="screen-title__distance">7 km</span>
+          <span class="screen-title__label">Classement en direct</span>
+        </h2>
+        <div class="vagues-buttons" role="group" aria-label="Lancement des vagues">
+          <button type="button" class="btn btn--vague btn--vague-active" data-vague="1" data-course="7km">
+            Lancer vague 1
+            <span class="vague-badge">22 coureurs · 09h30</span>
+          </button>
+          <button type="button" class="btn btn--vague" data-vague="2" data-course="7km" disabled>
+            Lancer vague 2
+            <span class="vague-badge">24 coureurs · 09h35</span>
+          </button>
+          <button type="button" class="btn btn--vague" data-vague="3" data-course="7km" disabled>
+            Lancer vague 3
+            <span class="vague-badge">25 coureurs · 09h40</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Barre de recherche -->
+      <section class="search-bar" aria-label="Filtrer les coureurs">
+        <label for="search-7km" class="search-label">
+          <span class="visually-hidden">Rechercher</span>
+          <span class="search-icon" aria-hidden="true">⌕</span>
+        </label>
+        <input type="search" id="search-7km" class="search-input"
+               placeholder="Nom, équipe ou catégorie…"
+               autocomplete="off">
+        <span class="search-count" aria-live="polite">71 coureurs</span>
+      </section>
+
+      <!-- Tableau classement individuel -->
+      <section class="classement-section" aria-labelledby="title-classement-7km">
+        <h3 id="title-classement-7km" class="section-title">Classement individuel</h3>
+        <div class="table-wrapper" role="region" aria-labelledby="title-classement-7km" tabindex="0">
+          <table class="classement-table" id="table-7km">
+            <thead>
+              <tr>
+                <th scope="col" class="col-pos"    aria-sort="ascending">Pos</th>
+                <th scope="col" class="col-dossard">Dossard</th>
+                <th scope="col" class="col-nom">Nom</th>
+                <th scope="col" class="col-equipe">Équipe</th>
+                <th scope="col" class="col-controle">Contrôle</th>
+                <th scope="col" class="col-temps">Temps</th>
+                <th scope="col" class="col-rang-cat">Rang cat.</th>
+                <th scope="col" class="col-cat">Cat.</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-7km">
+              <!-- Données statiques illustratives -->
+              <tr class="coureur-row finish" data-dossard="412">
+                <td class="coureur-pos">1</td>
+                <td class="coureur-dossard">412</td>
+                <td class="coureur-nom">Martin Sophie</td>
+                <td class="coureur-equipe">ROBA</td>
+                <td class="coureur-controle finish">Finish</td>
+                <td class="coureur-temps">00:28:14</td>
+                <td class="coureur-rang-cat">1</td>
+                <td class="coureur-categorie">SF</td>
+              </tr>
+              <tr class="coureur-row finish" data-dossard="876">
+                <td class="coureur-pos">2</td>
+                <td class="coureur-dossard">876</td>
+                <td class="coureur-nom">Dupont Marc</td>
+                <td class="coureur-equipe">ROBA</td>
+                <td class="coureur-controle finish">Finish</td>
+                <td class="coureur-temps">00:29:05</td>
+                <td class="coureur-rang-cat">1</td>
+                <td class="coureur-categorie">SH</td>
+              </tr>
+              <tr class="coureur-row finish" data-dossard="2891">
+                <td class="coureur-pos">3</td>
+                <td class="coureur-dossard">2891</td>
+                <td class="coureur-nom">Renard Thomas</td>
+                <td class="coureur-equipe">JOGGING CLUB LIÉGEOIS</td>
+                <td class="coureur-controle finish">Finish</td>
+                <td class="coureur-temps">00:31:42</td>
+                <td class="coureur-rang-cat">2</td>
+                <td class="coureur-categorie">SH</td>
+              </tr>
+              <tr class="coureur-row en-cours" data-dossard="1203">
+                <td class="coureur-pos">—</td>
+                <td class="coureur-dossard">1203</td>
+                <td class="coureur-nom">Leroy Jules</td>
+                <td class="coureur-equipe">BATT</td>
+                <td class="coureur-controle en-cours">En cours</td>
+                <td class="coureur-temps">—</td>
+                <td class="coureur-rang-cat">—</td>
+                <td class="coureur-categorie">VH</td>
+              </tr>
+              <tr class="coureur-row en-cours" data-dossard="4102">
+                <td class="coureur-pos">—</td>
+                <td class="coureur-dossard">4102</td>
+                <td class="coureur-nom">Bastin Arnaud</td>
+                <td class="coureur-equipe">HERVE SPORTIF</td>
+                <td class="coureur-controle en-cours">En cours</td>
+                <td class="coureur-temps">—</td>
+                <td class="coureur-rang-cat">—</td>
+                <td class="coureur-categorie">SH</td>
+              </tr>
+              <tr class="coureur-row abandon" data-dossard="334">
+                <td class="coureur-pos">—</td>
+                <td class="coureur-dossard">334</td>
+                <td class="coureur-nom">Fonteneau Lisa</td>
+                <td class="coureur-equipe">BATT</td>
+                <td class="coureur-controle abandon">Abandon</td>
+                <td class="coureur-temps">—</td>
+                <td class="coureur-rang-cat">—</td>
+                <td class="coureur-categorie">JF</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tableau classement équipes -->
+      <section class="classement-section" aria-labelledby="title-equipes-7km">
+        <h3 id="title-equipes-7km" class="section-title">Classement par équipe</h3>
+        <div class="table-wrapper" role="region" aria-labelledby="title-equipes-7km" tabindex="0">
+          <table class="classement-table classement-table--equipe" id="table-equipes-7km">
+            <thead>
+              <tr>
+                <th scope="col" class="col-pos">Rang</th>
+                <th scope="col" class="col-equipe">Club</th>
+                <th scope="col" class="col-coureurs">Coureurs classés</th>
+                <th scope="col" class="col-temps">Score moyen</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-equipes-7km">
+              <tr class="equipe-row" data-club="ROBA">
+                <td class="equipe-rang">1</td>
+                <td class="equipe-club">ROBA</td>
+                <td class="equipe-coureurs">Martin Sophie, Dupont Marc</td>
+                <td class="equipe-score">00:28:39</td>
+              </tr>
+              <tr class="equipe-row" data-club="JOGGING CLUB LIÉGEOIS">
+                <td class="equipe-rang">2</td>
+                <td class="equipe-club">JOGGING CLUB LIÉGEOIS</td>
+                <td class="equipe-coureurs">Renard Thomas</td>
+                <td class="equipe-score">00:31:42</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="equipe-note">⚠ Les équipes n'apparaissent qu'à partir de 2 coureurs Finish.</p>
+      </section>
+
+      <!-- Zone messages de clôture -->
+      <section class="cloture-messages" id="clotures-7km" aria-live="polite" aria-label="Messages de clôture">
+        <!-- Exemples statiques illustratifs -->
+        <article class="cloture-msg cloture-msg--equipe">
+          🏆 Classement équipe <strong>ROBA</strong> définitif pour le 7km — Score moyen : <strong>00:28:39</strong>
+        </article>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ══════════════════════════════════════════════════════
+       ÉCRAN 15KM
+  ══════════════════════════════════════════════════════ -->
+  <main id="screen-15km" class="screen" hidden>
+
+    <div class="screen-inner">
+
+      <!-- Barre de contrôle vagues -->
+      <section class="vagues-control" aria-label="Contrôle des vagues – 15km">
+        <h2 class="screen-title">
+          <span class="screen-title__distance">15 km</span>
+          <span class="screen-title__label">Classement en direct</span>
+        </h2>
+        <div class="vagues-buttons" role="group" aria-label="Lancement des vagues">
+          <button type="button" class="btn btn--vague btn--vague-active" data-vague="4" data-course="15km">
+            Lancer vague 1
+            <span class="vague-badge">25 coureurs · 10h00</span>
+          </button>
+          <button type="button" class="btn btn--vague" data-vague="5" data-course="15km" disabled>
+            Lancer vague 2
+            <span class="vague-badge">25 coureurs · 10h05</span>
+          </button>
+          <button type="button" class="btn btn--vague" data-vague="6" data-course="15km" disabled>
+            Lancer vague 3
+            <span class="vague-badge">25 coureurs · 10h10</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Barre de recherche -->
+      <section class="search-bar" aria-label="Filtrer les coureurs">
+        <label for="search-15km" class="search-label">
+          <span class="visually-hidden">Rechercher</span>
+          <span class="search-icon" aria-hidden="true">⌕</span>
+        </label>
+        <input type="search" id="search-15km" class="search-input"
+               placeholder="Nom, équipe ou catégorie…"
+               autocomplete="off">
+        <span class="search-count" aria-live="polite">75 coureurs</span>
+      </section>
+
+      <!-- Tableau classement individuel -->
+      <section class="classement-section" aria-labelledby="title-classement-15km">
+        <h3 id="title-classement-15km" class="section-title">Classement individuel</h3>
+        <div class="table-wrapper" role="region" aria-labelledby="title-classement-15km" tabindex="0">
+          <table class="classement-table" id="table-15km">
+            <thead>
+              <tr>
+                <th scope="col" class="col-pos"    aria-sort="ascending">Pos</th>
+                <th scope="col" class="col-dossard">Dossard</th>
+                <th scope="col" class="col-nom">Nom</th>
+                <th scope="col" class="col-equipe">Équipe</th>
+                <th scope="col" class="col-controle">Contrôle</th>
+                <th scope="col" class="col-temps">Temps</th>
+                <th scope="col" class="col-rang-cat">Rang cat.</th>
+                <th scope="col" class="col-cat">Cat.</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-15km">
+              <tr class="coureur-row finish" data-dossard="3201">
+                <td class="coureur-pos">1</td>
+                <td class="coureur-dossard">3201</td>
+                <td class="coureur-nom">Paquet Amaury</td>
+                <td class="coureur-equipe">TEAM LIÈGE</td>
+                <td class="coureur-controle finish">Finish</td>
+                <td class="coureur-temps">00:47:45</td>
+                <td class="coureur-rang-cat">1</td>
+                <td class="coureur-categorie">SH</td>
+              </tr>
+              <tr class="coureur-row finish" data-dossard="487">
+                <td class="coureur-pos">2</td>
+                <td class="coureur-dossard">487</td>
+                <td class="coureur-nom">Pierron Thomas</td>
+                <td class="coureur-equipe">TEAM LIÈGE</td>
+                <td class="coureur-controle finish">Finish</td>
+                <td class="coureur-temps">00:48:28</td>
+                <td class="coureur-rang-cat">2</td>
+                <td class="coureur-categorie">SH</td>
+              </tr>
+              <tr class="coureur-row finish" data-dossard="2034">
+                <td class="coureur-pos">3</td>
+                <td class="coureur-dossard">2034</td>
+                <td class="coureur-nom">Dumoulin Antoine</td>
+                <td class="coureur-equipe">SERAING RC</td>
+                <td class="coureur-controle finish">Finish</td>
+                <td class="coureur-temps">00:49:09</td>
+                <td class="coureur-rang-cat">1</td>
+                <td class="coureur-categorie">VH</td>
+              </tr>
+              <tr class="coureur-row finish" data-dossard="1256">
+                <td class="coureur-pos">4</td>
+                <td class="coureur-dossard">1256</td>
+                <td class="coureur-nom">Grandjean Dorian</td>
+                <td class="coureur-equipe">TEAM LIÈGE</td>
+                <td class="coureur-controle finish">Finish</td>
+                <td class="coureur-temps">00:50:01</td>
+                <td class="coureur-rang-cat">3</td>
+                <td class="coureur-categorie">SH</td>
+              </tr>
+              <tr class="coureur-row en-cours" data-dossard="578">
+                <td class="coureur-pos">—</td>
+                <td class="coureur-dossard">578</td>
+                <td class="coureur-nom">Deroui Sami</td>
+                <td class="coureur-equipe">ROBA</td>
+                <td class="coureur-controle en-cours">En cours</td>
+                <td class="coureur-temps">—</td>
+                <td class="coureur-rang-cat">—</td>
+                <td class="coureur-categorie">SH</td>
+              </tr>
+              <tr class="coureur-row en-cours" data-dossard="923">
+                <td class="coureur-pos">—</td>
+                <td class="coureur-dossard">923</td>
+                <td class="coureur-nom">Houben Julien</td>
+                <td class="coureur-equipe">ABSOLUTERUN</td>
+                <td class="coureur-controle en-cours">En cours</td>
+                <td class="coureur-temps">—</td>
+                <td class="coureur-rang-cat">—</td>
+                <td class="coureur-categorie">SH</td>
+              </tr>
+              <tr class="coureur-row abandon" data-dossard="489">
+                <td class="coureur-pos">—</td>
+                <td class="coureur-dossard">489</td>
+                <td class="coureur-nom">Fonteneau Claire</td>
+                <td class="coureur-equipe">TEAM LIÈGE</td>
+                <td class="coureur-controle abandon">Abandon</td>
+                <td class="coureur-temps">—</td>
+                <td class="coureur-rang-cat">—</td>
+                <td class="coureur-categorie">SF</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tableau classement équipes -->
+      <section class="classement-section" aria-labelledby="title-equipes-15km">
+        <h3 id="title-equipes-15km" class="section-title">Classement par équipe</h3>
+        <div class="table-wrapper" role="region" aria-labelledby="title-equipes-15km" tabindex="0">
+          <table class="classement-table classement-table--equipe" id="table-equipes-15km">
+            <thead>
+              <tr>
+                <th scope="col" class="col-pos">Rang</th>
+                <th scope="col" class="col-equipe">Club</th>
+                <th scope="col" class="col-coureurs">Coureurs classés</th>
+                <th scope="col" class="col-temps">Score moyen</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-equipes-15km">
+              <tr class="equipe-row" data-club="TEAM LIÈGE">
+                <td class="equipe-rang">1</td>
+                <td class="equipe-club">TEAM LIÈGE</td>
+                <td class="equipe-coureurs">Paquet Amaury, Pierron Thomas, Grandjean Dorian</td>
+                <td class="equipe-score">00:48:44</td>
+              </tr>
+              <tr class="equipe-row" data-club="SERAING RC">
+                <td class="equipe-rang">2</td>
+                <td class="equipe-club">SERAING RC</td>
+                <td class="equipe-coureurs">Dumoulin Antoine</td>
+                <td class="equipe-score">00:49:09</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="equipe-note">⚠ Les équipes n'apparaissent qu'à partir de 2 coureurs Finish.</p>
+      </section>
+
+      <!-- Zone messages de clôture -->
+      <section class="cloture-messages" id="clotures-15km" aria-live="polite" aria-label="Messages de clôture">
+      </section>
+
+    </div>
+  </main>
+</body>
+</html>
