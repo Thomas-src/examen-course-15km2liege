@@ -440,7 +440,7 @@ class App {
     // ─────────────────────────────────────────────────────────
 
     initReset() {
-        const btn = document.querySelector('#btn--reset');
+        const btn = document.querySelector('#btn-reset');
         if (!btn) return;
         btn.addEventListener('click', () => this.reset());
     }
