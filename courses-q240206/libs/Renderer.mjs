@@ -153,62 +153,57 @@ export class Renderer {
         tbody.appendChild(fragment);
     }
 
-    #renderMessagesClôture(course) {
-        const conteneur = document.getElementById(`clotures-${course.nom}`);
-        if (!conteneur) return;
+   #renderMessagesClôture(course) {
+    const conteneur = document.getElementById(`clotures-${course.nom}`);
+    if (!conteneur) return;
 
-        const coureurs = course.vagues.flatMap(v => v.coureurs);
-        const total    = coureurs.length;
-        if (total === 0) return;
+    const coureurs = course.vagues.flatMap(v => v.coureurs);
+    const total    = coureurs.length;
+    if (total === 0) return;
 
-        const termines = coureurs.filter(c => c.temps || c.abandon);
+    // Vider et reconstruire à chaque render
+    conteneur.innerHTML = '';
 
-        // ── Clôture de course ──────────────────────────────
-        if (termines.length === total) {
-            const msgId = `cloture-course-${course.nom}`;
-            if (!conteneur.querySelector(`[data-msg="${msgId}"]`)) {
-                const nbFinish  = coureurs.filter(c => c.temps && !c.abandon).length;
-                const nbAbandon = coureurs.filter(c => c.abandon).length;
+    const termines = coureurs.filter(c => c.temps || c.abandon);
 
-                const article = document.createElement('article');
-                article.className   = 'cloture-msg cloture-msg--course';
-                article.dataset.msg = msgId;
-                article.innerHTML   = `🏁 Course <strong>${course.nom}</strong> terminée — `
-                    + `<strong>${nbFinish}</strong> coureur${nbFinish > 1 ? 's' : ''} `
-                    + `classé${nbFinish > 1 ? 's' : ''}, `
-                    + `<strong>${nbAbandon}</strong> abandon${nbAbandon > 1 ? 's' : ''}`;
-                conteneur.appendChild(article);
-            }
-        }
+    // ── Clôture de course ──────────────────────────────
+    if (termines.length === total) {
+        const nbFinish  = coureurs.filter(c => c.temps && !c.abandon).length;
+        const nbAbandon = coureurs.filter(c => c.abandon).length;
 
-        // ── Clôture par équipe ─────────────────────────────
-        const clubs = {};
-        coureurs.forEach(c => {
-            const club = c.club ?? 'Sans club';
-            if (!clubs[club]) clubs[club] = [];
-            clubs[club].push(c);
-        });
-
-        Object.entries(clubs).forEach(([club, membres]) => {
-            const tousTermines = membres.every(c => c.temps || c.abandon);
-            if (!tousTermines) return;
-
-            if (conteneur.querySelector(`[data-club="${club}"]`)) return;
-
-            const equipesTerminees = this.classement.calculerClassementEquipes(membres);
-            if (equipesTerminees.length === 0) return;
-
-            const { scoreMoyen } = equipesTerminees[0];
-
-            const article = document.createElement('article');
-            article.className   = 'cloture-msg cloture-msg--equipe';
-            article.dataset.club = club;
-            article.dataset.msg  = `cloture-equipe-${course.nom}-${club}`;
-            article.innerHTML    = `🏆 Classement équipe <strong>${club}</strong> définitif `
-                + `pour le ${course.nom} — Score moyen : <strong>${scoreMoyen}</strong>`;
-            conteneur.appendChild(article);
-        });
+        const article = document.createElement('article');
+        article.className = 'cloture-msg cloture-msg--course';
+        article.innerHTML = `🏁 Course <strong>${course.nom}</strong> terminée — `
+            + `<strong>${nbFinish}</strong> coureur${nbFinish > 1 ? 's' : ''} `
+            + `classé${nbFinish > 1 ? 's' : ''}, `
+            + `<strong>${nbAbandon}</strong> abandon${nbAbandon > 1 ? 's' : ''}`;
+        conteneur.appendChild(article);
     }
+
+    // ── Clôture par équipe ─────────────────────────────
+    const clubs = {};
+    coureurs.forEach(c => {
+        const club = c.club ?? 'Sans club';
+        if (!clubs[club]) clubs[club] = [];
+        clubs[club].push(c);
+    });
+
+    Object.entries(clubs).forEach(([club, membres]) => {
+        if (!membres.every(c => c.temps || c.abandon)) return;
+
+        const equipesTerminees = this.classement.calculerClassementEquipes(membres);
+        if (equipesTerminees.length === 0) return;
+
+        const { scoreMoyen } = equipesTerminees[0];
+
+        const article = document.createElement('article');
+        article.className    = 'cloture-msg cloture-msg--equipe';
+        article.dataset.club = club;
+        article.innerHTML    = `🏆 Classement équipe <strong>${club}</strong> définitif `
+            + `pour le ${course.nom} — Score moyen : <strong>${scoreMoyen}</strong>`;
+        conteneur.appendChild(article);
+    });
+}
 
     // ─────────────────────────────────────────────────────────
     // Recherche
