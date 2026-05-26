@@ -255,6 +255,66 @@ class App {
 
         return previous.coureurs.some(c => c.temps || c.abandon);
     }
+
+
+    initReset() {
+        const btn = document.querySelector('.btn--reset');
+        if (!btn) return;
+
+        btn.addEventListener('click', () => this.reset());
+    }
+
+    reset() {
+        // 1. Suppression des données locales
+        this.storage.clearAll();
+        this.courses = [];
+
+        // 2. Réinitialisation de l'affichage
+        this.clearTableaux();
+        this.resetVagueButtons();
+
+        // 3. Rechargement depuis l'API
+        this.initializeApp();
+    }
+
+    clearTableaux() {
+        // Vide les tbody des tableaux de classement individuels et équipes
+        document.querySelectorAll(
+            '.classement-table tbody, .cloture-messages'
+        ).forEach(el => { el.innerHTML = ''; });
+
+        // Remet les barres de progression à zéro
+        document.querySelectorAll('.progress-bar__fill').forEach(bar => {
+            bar.style.width = '0%';
+        });
+        document.querySelectorAll('.progress-label').forEach(label => {
+            label.textContent = '0 / 0 coureurs avec résultat';
+        });
+
+        // Remet le compteur de recherche
+        document.querySelectorAll('.search-count').forEach(el => {
+            el.textContent = '';
+        });
+    }
+
+    resetVagueButtons() {
+        this.courses.forEach(course => {
+            const buttons = document.querySelectorAll(
+                `.btn--vague[data-course="${course.nom}"]`
+            );
+
+            buttons.forEach((btn, index) => {
+                btn.classList.remove('done', 'running', 'btn--vague-active');
+
+                if (index === 0) {
+                    btn.classList.add('btn--vague-active');
+                    btn.disabled = false;
+                } else {
+                    btn.disabled = true;
+                }
+            });
+        });
+    }
 }
 
 window.addEventListener('load', () => {
