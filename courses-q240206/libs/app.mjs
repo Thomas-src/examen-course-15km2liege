@@ -9,6 +9,9 @@ class App {
     #API_COURSES = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/courses.php';
     #API_TEMPS   = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/temps.php';
 
+    /** AbortController actif pour les fetches de temps en cours. */
+    #abortController = null;
+
     constructor() {
         const storage       = new Storage();
         this.repo           = new CourseRepository(fakeFetchCourses, storage);
@@ -42,7 +45,6 @@ class App {
         } catch (error) {
             console.error('Erreur lors du chargement des courses :', error);
             if (!localCourses) {
-                // Overlay encore visible : on peut afficher l'erreur
                 this.renderer.setLoadingError();
             }
         }
@@ -56,9 +58,9 @@ class App {
         }
     }
 
-    async fetchTemps(dossard) {
-        const response = await fakeFetch(dossard);
-        // const response = await fetch(`${this.#API_TEMPS}?dossard=${dossard}`);
+    async fetchTemps(dossard, signal) {
+        const response = await fakeFetch(dossard, signal);
+        // const response = await fetch(`${this.#API_TEMPS}?dossard=${dossard}`, { signal });
         if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
         return await response.json();
     }
@@ -108,6 +110,12 @@ class App {
         const vague = course.vagues.find(v => v.vid === vagueId);
         if (!vague) return;
 
+        // Crée un AbortController pour cette vague (ou réutilise celui en cours)
+        if (!this.#abortController || this.#abortController.signal.aborted) {
+            this.#abortController = new AbortController();
+        }
+        const { signal } = this.#abortController;
+
         this.renderer.setVagueRunning(courseNom, vagueId);
 
         // Active la vague suivante immédiatement (sans attendre les résultats)
@@ -116,16 +124,22 @@ class App {
         if (nextVague) this.renderer.activateVague(courseNom, nextVague.vid);
 
         const promises = vague.coureurs.map(coureur =>
-            this.fetchTemps(coureur.dossard)
+            this.fetchTemps(coureur.dossard, signal)
                 .then(resultat => {
+                    if (signal.aborted) return; // reset survenu entre-temps
                     this.state.applyResult(courseNom, vagueId, resultat);
                     this.repo.save(this.state.getCourses());
                     this.renderer.render(this.state.getCourses());
                 })
-                .catch(error => console.error(`Erreur dossard ${coureur.dossard}`, error))
+                .catch(error => {
+                    if (error.name === 'AbortError') return; // annulation volontaire
+                    console.error(`Erreur dossard ${coureur.dossard}`, error);
+                })
         );
 
         await Promise.all(promises);
+
+        if (signal.aborted) return; // ne pas finaliser si reset déclenché pendant l'attente
 
         this.renderer.setVagueDone(courseNom, vagueId);
         this.repo.save(this.state.getCourses());
@@ -147,7 +161,7 @@ class App {
     }
 
     // ─────────────────────────────────────────────────────────
-    // Reset
+    // Reset — US4
     // ─────────────────────────────────────────────────────────
 
     initReset() {
@@ -157,12 +171,22 @@ class App {
     }
 
     reset() {
+        // 1. Annuler tous les fetches de temps en cours
+        if (this.#abortController) {
+            this.#abortController.abort();
+            this.#abortController = null;
+        }
+
+        // 2. Supprimer les données locales et vider l'état
         this.repo.clear();
         this.state.setCourses([]);
+
+        // 3. Réinitialiser l'affichage
         this.renderer.clearTableaux();
         this.renderer.resetVagueButtons();
         this.renderer.showLoading();
 
+        // 4. Recharger les courses depuis l'API (US1)
         this.repo.fetchRemote()
             .then(courses => {
                 this.state.setCourses(courses);
