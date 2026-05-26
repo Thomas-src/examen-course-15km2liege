@@ -1,17 +1,19 @@
-import { Storage } from './storage.mjs';
-import { Classement } from './classement.mjs';
-import { Renderer } from './renderer.mjs';
+import { Storage }            from './storage.mjs';
+import { Classement }         from './classement.mjs';
+import { Renderer }           from './Renderer.mjs';
 import { fakeFetch, fakeFetchCourses } from './fake.mjs';
+import { CourseRepository }   from './CourseRepository.mjs';
+import { CourseState }        from './CourseState.mjs';
 
 class App {
     #API_COURSES = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/courses.php';
     #API_TEMPS   = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/temps.php';
 
     constructor() {
-        this.storage    = new Storage();
-        this.classement = new Classement();
-        this.renderer   = new Renderer(this.classement);
-        this.courses    = [];
+        const storage       = new Storage();
+        this.repo           = new CourseRepository(fakeFetchCourses, storage);
+        this.state          = new CourseState();
+        this.renderer       = new Renderer(new Classement());
         this._listenersInit = false;
     }
 
@@ -22,24 +24,25 @@ class App {
     async initializeApp() {
         this.renderer.showLoading();
 
-        const localCourses = this.storage.loadCourses?.();
-
+        // US1 — affichage immédiat depuis le cache si disponible
+        const localCourses = this.repo.loadLocal();
         if (localCourses) {
-            this.courses = localCourses;
-            this.renderer.render(this.courses);
+            this.state.setCourses(localCourses);
+            this.renderer.render(this.state.getCourses());
             this.renderer.hideLoading();
         }
 
+        // US1 — chargement remote en arrière-plan, puis mise à jour
         try {
-            const courses = await this.fetchCourses();
-            this.courses  = courses;
-            this.storage.saveCourses(courses);
-            this.renderer.render(this.courses);
+            const courses = await this.repo.fetchRemote();
+            this.state.setCourses(courses);
+            this.renderer.render(this.state.getCourses());
             this.renderer.hideLoading();
             console.log('Courses chargées et sauvegardées localement.');
         } catch (error) {
             console.error('Erreur lors du chargement des courses :', error);
             if (!localCourses) {
+                // Overlay encore visible : on peut afficher l'erreur
                 this.renderer.setLoadingError();
             }
         }
@@ -51,13 +54,6 @@ class App {
             this.initSearch();
             this._listenersInit = true;
         }
-    }
-
-    async fetchCourses() {
-        const response = await fakeFetchCourses();
-        // const response = await fetch(this.#API_COURSES);
-        if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
-        return await response.json();
     }
 
     async fetchTemps(dossard) {
@@ -94,25 +90,6 @@ class App {
     }
 
     // ─────────────────────────────────────────────────────────
-    // Modèle — mutation des données
-    // ─────────────────────────────────────────────────────────
-
-    applyResult(courseNom, vagueId, resultat) {
-        const course  = this.courses.find(c => c.nom === courseNom);
-        const vague   = course?.vagues.find(v => v.vid === vagueId);
-        const coureur = vague?.coureurs.find(c => c.dossard === resultat.dossard);
-        if (!coureur) return;
-
-        if (resultat.abandon) {
-            coureur.abandon = true;
-            delete coureur.temps;
-        } else {
-            coureur.temps   = resultat.temps;
-            coureur.abandon = false;
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────
     // Vagues
     // ─────────────────────────────────────────────────────────
 
@@ -122,18 +99,18 @@ class App {
                 this.lancerVague(button.dataset.course, Number(button.dataset.vague));
             });
         });
-        this.renderer.updateVagueButtons(this.courses);
+        this.renderer.updateVagueButtons(this.state.getCourses());
     }
 
     async lancerVague(courseNom, vagueId) {
-        const course = this.courses.find(c => c.nom === courseNom);
+        const course = this.state.getCourse(courseNom);
         if (!course) return;
         const vague = course.vagues.find(v => v.vid === vagueId);
         if (!vague) return;
 
         this.renderer.setVagueRunning(courseNom, vagueId);
 
-        // Active la vague suivante immédiatement
+        // Active la vague suivante immédiatement (sans attendre les résultats)
         const index     = course.vagues.findIndex(v => v.vid === vagueId);
         const nextVague = course.vagues[index + 1];
         if (nextVague) this.renderer.activateVague(courseNom, nextVague.vid);
@@ -141,9 +118,9 @@ class App {
         const promises = vague.coureurs.map(coureur =>
             this.fetchTemps(coureur.dossard)
                 .then(resultat => {
-                    this.applyResult(courseNom, vagueId, resultat);
-                    this.storage.saveCourses(this.courses);
-                    this.renderer.render(this.courses);
+                    this.state.applyResult(courseNom, vagueId, resultat);
+                    this.repo.save(this.state.getCourses());
+                    this.renderer.render(this.state.getCourses());
                 })
                 .catch(error => console.error(`Erreur dossard ${coureur.dossard}`, error))
         );
@@ -151,8 +128,8 @@ class App {
         await Promise.all(promises);
 
         this.renderer.setVagueDone(courseNom, vagueId);
-        this.storage.saveCourses(this.courses);
-        this.renderer.render(this.courses);
+        this.repo.save(this.state.getCourses());
+        this.renderer.render(this.state.getCourses());
     }
 
     // ─────────────────────────────────────────────────────────
@@ -180,17 +157,16 @@ class App {
     }
 
     reset() {
-        this.storage.clearAll();
-        this.courses = [];
+        this.repo.clear();
+        this.state.setCourses([]);
         this.renderer.clearTableaux();
         this.renderer.resetVagueButtons();
         this.renderer.showLoading();
 
-        this.fetchCourses()
+        this.repo.fetchRemote()
             .then(courses => {
-                this.courses = courses;
-                this.storage.saveCourses(courses);
-                this.renderer.render(this.courses);
+                this.state.setCourses(courses);
+                this.renderer.render(this.state.getCourses());
                 this.renderer.hideLoading();
             })
             .catch(() => {

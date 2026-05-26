@@ -1,19 +1,21 @@
 export class CourseRepository {
     constructor(fetcher, storage) {
-        this.fetcher  = fetcher;   // fakeFetchCourses ou fetch réel
-        this.storage  = storage;
+        this.fetcher = fetcher;   // fakeFetchCourses ou fetch réel
+        this.storage = storage;
     }
 
-    async load() {
-        const local = this.storage.loadCourses();
-        try {
-            const courses = await this.fetcher();
-            this.storage.saveCourses(courses);
-            return { courses, source: 'remote' };
-        } catch {
-            if (local) return { courses: local, source: 'cache' };
-            throw new Error('Aucune donnée disponible');
-        }
+    /** Lit les courses depuis le cache local. Retourne null si absent. */
+    loadLocal() {
+        return this.storage.loadCourses();
+    }
+
+    /** Récupère les courses depuis l'API et les sauvegarde localement. */
+    async fetchRemote() {
+        const response = await this.fetcher();
+        if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
+        const courses = await response.json();
+        this.storage.saveCourses(courses);
+        return courses;
     }
 
     save(courses) { this.storage.saveCourses(courses); }
