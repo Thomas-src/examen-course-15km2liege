@@ -1,6 +1,6 @@
 import { Storage } from './storage.mjs';
 import { Classement } from './classement.mjs';
-import { fakeCourse, fakeFetch,fakeFetchCourses } from './fake.mjs';
+import { fakeCourse, fakeFetch, fakeFetchCourses } from './fake.mjs';
 
 class App {
     #API_COURSES = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/courses.php';
@@ -110,8 +110,7 @@ class App {
             const pourcentage = total === 0 ? 0 : Math.round((avecResultat / total) * 100);
 
             card.querySelector('.progress-bar__fill').style.width = `${pourcentage}%`;
-            card.querySelector('.progress-label').textContent =
-                `${avecResultat} / ${total} coureurs avec résultat`;
+            card.querySelector('.progress-label').textContent = `${avecResultat} / ${total} arrivés`;
         });
     }
 
@@ -215,60 +214,60 @@ class App {
     }
 
     renderMessagesClôture(course) {
-    const conteneur = document.getElementById(`clotures-${course.nom}`);
-    if (!conteneur) return;
+        const conteneur = document.getElementById(`clotures-${course.nom}`);
+        if (!conteneur) return;
 
-    const coureurs = course.vagues.flatMap(v => v.coureurs);
-    const total    = coureurs.length;
-    if (total === 0) return;
+        const coureurs = course.vagues.flatMap(v => v.coureurs);
+        const total = coureurs.length;
+        if (total === 0) return;
 
-    const termines = coureurs.filter(c => c.temps || c.abandon);
+        const termines = coureurs.filter(c => c.temps || c.abandon);
 
-    // Clôture de course
-    if (termines.length === total) {
-        const msgId = `cloture-course-${course.nom}`;
-        if (!conteneur.querySelector(`[data-msg="${msgId}"]`)) {
-            const nbFinish  = coureurs.filter(c => c.temps && !c.abandon).length;
-            const nbAbandon = coureurs.filter(c => c.abandon).length;
+        // Clôture de course
+        if (termines.length === total) {
+            const msgId = `cloture-course-${course.nom}`;
+            if (!conteneur.querySelector(`[data-msg="${msgId}"]`)) {
+                const nbFinish = coureurs.filter(c => c.temps && !c.abandon).length;
+                const nbAbandon = coureurs.filter(c => c.abandon).length;
+
+                const article = document.createElement('article');
+                article.className = 'cloture-msg cloture-msg--course';
+                article.dataset.msg = msgId;
+                article.innerHTML = `🏁 Course <strong>${course.nom}</strong> terminée — <strong>${nbFinish}</strong> coureur${nbFinish > 1 ? 's' : ''} classé${nbFinish > 1 ? 's' : ''}, <strong>${nbAbandon}</strong> abandon${nbAbandon > 1 ? 's' : ''}`;
+                conteneur.appendChild(article);
+            }
+        }
+
+        // Clôture par équipe
+        const clubs = {};
+        coureurs.forEach(c => {
+            const club = c.club ?? 'Sans club';
+            if (!clubs[club]) clubs[club] = [];
+            clubs[club].push(c);
+        });
+
+        Object.entries(clubs).forEach(([club, membres]) => {
+            // Le club est définitif seulement quand tous ses coureurs ont un résultat
+            const tousTermines = membres.every(c => c.temps || c.abandon);
+            if (!tousTermines) return;
+
+            // Éviter le doublon si le message existe déjà
+            if (conteneur.querySelector(`[data-club="${club}"]`)) return;
+
+            // ✅ Déléguer le calcul à Classement (gère aussi le filtre < 2 finish)
+            const equipesTerminees = this.classement.calculerClassementEquipes(membres);
+            if (equipesTerminees.length === 0) return; // club avec < 2 finish → pas de classement équipe
+
+            const { scoreMoyen } = equipesTerminees[0];
 
             const article = document.createElement('article');
-            article.className   = 'cloture-msg cloture-msg--course';
-            article.dataset.msg = msgId;
-            article.innerHTML   = `🏁 Course <strong>${course.nom}</strong> terminée — <strong>${nbFinish}</strong> coureur${nbFinish > 1 ? 's' : ''} classé${nbFinish > 1 ? 's' : ''}, <strong>${nbAbandon}</strong> abandon${nbAbandon > 1 ? 's' : ''}`;
+            article.className = 'cloture-msg cloture-msg--equipe';
+            article.dataset.club = club;
+            article.dataset.msg = `cloture-equipe-${course.nom}-${club}`;
+            article.innerHTML = `🏆 Classement équipe <strong>${club}</strong> définitif pour le ${course.nom} — Score moyen : <strong>${scoreMoyen}</strong>`;
             conteneur.appendChild(article);
-        }
+        });
     }
-
-    // Clôture par équipe
-    const clubs = {};
-    coureurs.forEach(c => {
-        const club = c.club ?? 'Sans club';
-        if (!clubs[club]) clubs[club] = [];
-        clubs[club].push(c);
-    });
-
-    Object.entries(clubs).forEach(([club, membres]) => {
-        // Le club est définitif seulement quand tous ses coureurs ont un résultat
-        const tousTermines = membres.every(c => c.temps || c.abandon);
-        if (!tousTermines) return;
-
-        // Éviter le doublon si le message existe déjà
-        if (conteneur.querySelector(`[data-club="${club}"]`)) return;
-
-        // ✅ Déléguer le calcul à Classement (gère aussi le filtre < 2 finish)
-        const equipesTerminees = this.classement.calculerClassementEquipes(membres);
-        if (equipesTerminees.length === 0) return; // club avec < 2 finish → pas de classement équipe
-
-        const { scoreMoyen } = equipesTerminees[0];
-
-        const article = document.createElement('article');
-        article.className    = 'cloture-msg cloture-msg--equipe';
-        article.dataset.club = club;
-        article.dataset.msg  = `cloture-equipe-${course.nom}-${club}`;
-        article.innerHTML    = `🏆 Classement équipe <strong>${club}</strong> définitif pour le ${course.nom} — Score moyen : <strong>${scoreMoyen}</strong>`;
-        conteneur.appendChild(article);
-    });
-}
 
     // ─────────────────────────────────────────────────────────
     // Recherche
@@ -441,7 +440,7 @@ class App {
     // ─────────────────────────────────────────────────────────
 
     initReset() {
-        const btn = document.querySelector('.btn--reset');
+        const btn = document.querySelector('#btn--reset');
         if (!btn) return;
         btn.addEventListener('click', () => this.reset());
     }
@@ -462,7 +461,7 @@ class App {
             })
             .catch(() => {
                 document.querySelector('#loading-title').textContent = "Impossible de charger les courses.";
-                    setTimeout(() => this.hideLoading(), 3000);
+                setTimeout(() => this.hideLoading(), 3000);
             });
     }
 

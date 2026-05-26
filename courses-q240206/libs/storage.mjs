@@ -21,31 +21,7 @@ export class Storage {
     return raw ? JSON.parse(raw) : null;
   }
 
-  /** Sauvegarde un résultat individuel */
-  saveResultat(dossard, data) {
-    const resultats = this.loadResultats();
-    resultats[dossard] = data;
-    localStorage.setItem(STORAGE_KEYS.RESULTATS, JSON.stringify(resultats));
-  }
 
-  /** Charge tous les résultats */
-  loadResultats() {
-    const raw = localStorage.getItem(STORAGE_KEYS.RESULTATS);
-    return raw ? JSON.parse(raw) : {};
-  }
-
-  /** Sauvegarde l'état d'une vague */
-  saveVagueEtat(vid, etat) {
-    const etats = this.loadVaguesEtat();
-    etats[vid] = etat;
-    localStorage.setItem(STORAGE_KEYS.VAGUES_ETAT, JSON.stringify(etats));
-  }
-
-  /** Charge l'état de toutes les vagues */
-  loadVaguesEtat() {
-    const raw = localStorage.getItem(STORAGE_KEYS.VAGUES_ETAT);
-    return raw ? JSON.parse(raw) : {};
-  }
 
   /** Supprime toutes les données locales */
   clearAll() {
