@@ -1,14 +1,14 @@
 import { Storage } from './storage.mjs';
 import { Classement } from './classement.mjs';
-
-const API_COURSES = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/courses.php';
-const API_TEMPS   = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/temps.php';
+import { fakeCourse, fakeFetch,fakeFetchCourses } from './fake.mjs';
 
 class App {
+    #API_COURSES = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/courses.php';
+    #API_TEMPS = 'https://panoramix.cg.helmo.be/~p150107/js2/liege15km/temps.php';
     constructor() {
-        this.storage    = new Storage();
+        this.storage = new Storage();
         this.classement = new Classement();
-        this.courses    = [];
+        this.courses = [];
         this._listenersInit = false;
     }
 
@@ -48,16 +48,14 @@ class App {
     }
 
     async fetchCourses() {
-        const response = await fetch(API_COURSES, {
-            headers: { 'Accept': 'application/json' },
-        });
+        const response = await fakeFetchCourses();  // ✅ Response correcte
         if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
-        return await response.json();
+        return await response.json();  // ✅ retourne le tableau
     }
 
     showLoading() {
         const overlay = document.querySelector('#loading-overlay');
-        const title   = document.querySelector('#loading-title');
+        const title = document.querySelector('#loading-title');
         title.textContent = "Chargement des courses…";
         overlay.hidden = false;
     }
@@ -106,8 +104,8 @@ class App {
             const card = document.querySelector(`.course-card[data-course="${course.nom}"]`);
             if (!card) return;
 
-            const coureurs    = course.vagues.flatMap(v => v.coureurs);
-            const total       = coureurs.length;
+            const coureurs = course.vagues.flatMap(v => v.coureurs);
+            const total = coureurs.length;
             const avecResultat = coureurs.filter(c => c.temps || c.abandon).length;
             const pourcentage = total === 0 ? 0 : Math.round((avecResultat / total) * 100);
 
@@ -135,7 +133,7 @@ class App {
 
         const coureurs = course.vagues.flatMap(v => v.coureurs);
 
-        const finish  = coureurs.filter(c => this.classement.statutCoureur(c) === 'finish')
+        const finish = coureurs.filter(c => this.classement.statutCoureur(c) === 'finish')
             .sort((a, b) => this.classement.tempsEnSecondes(a.temps) - this.classement.tempsEnSecondes(b.temps));
         const enCours = coureurs.filter(c => this.classement.statutCoureur(c) === 'en-cours');
         const abandon = coureurs.filter(c => this.classement.statutCoureur(c) === 'abandon');
@@ -144,28 +142,26 @@ class App {
 
         // Rangs par catégorie (Finish uniquement)
         const rangParCategorie = {};
-        finish.forEach(c => {
+        finish.forEach((c, i) => {
             rangParCategorie[c.categorie] = (rangParCategorie[c.categorie] || 0) + 1;
-            c._rangCat    = rangParCategorie[c.categorie];
+            c._rangCat = rangParCategorie[c.categorie];
+            c._rangGlobal = i + 1;
         });
-
-        // Rang global : calculé sur le tableau finish, pas sur idx de ordonnes
-        finish.forEach((c, i) => { c._rangGlobal = i + 1; });
 
         const fragment = document.createDocumentFragment();
 
         ordonnes.forEach(coureur => {
             const statut = this.classement.statutCoureur(coureur);
-            const posGlobal  = statut === 'finish' ? coureur._rangGlobal : '—';
-            const rangCat    = statut === 'finish' ? coureur._rangCat    : '—';
-            const tempsAff   = statut === 'finish' ? coureur.temps       : '—';
-            const statutLabel = statut === 'finish'   ? 'Finish'
+            const posGlobal = statut === 'finish' ? coureur._rangGlobal : '—';
+            const rangCat = statut === 'finish' ? coureur._rangCat : '—';
+            const tempsAff = statut === 'finish' ? coureur.temps : '—';
+            const statutLabel = statut === 'finish' ? 'Finish'
                 : statut === 'en-cours' ? 'En cours'
-                    :                        'Abandon';
+                    : 'Abandon';
 
             const tr = document.createElement('tr');
-            tr.className        = `coureur-row ${statut}`;
-            tr.dataset.dossard  = coureur.dossard;
+            tr.className = `coureur-row ${statut}`;
+            tr.dataset.dossard = coureur.dossard;
 
             tr.innerHTML = `
                 <td class="coureur-pos">${posGlobal}</td>
@@ -190,7 +186,7 @@ class App {
         const tbody = document.getElementById(`tbody-equipes-${course.nom}`);
         if (!tbody) return;
 
-        const coureurs       = course.vagues.flatMap(v => v.coureurs);
+        const coureurs = course.vagues.flatMap(v => v.coureurs);
         const equipesValides = this.classement.calculerClassementEquipes(coureurs);
 
         const fragment = document.createDocumentFragment();
@@ -202,7 +198,7 @@ class App {
                 .join(', ');
 
             const tr = document.createElement('tr');
-            tr.className   = 'equipe-row';
+            tr.className = 'equipe-row';
             tr.dataset.club = equipe.club;
 
             tr.innerHTML = `
@@ -219,58 +215,60 @@ class App {
     }
 
     renderMessagesClôture(course) {
-        const conteneur = document.getElementById(`clotures-${course.nom}`);
-        if (!conteneur) return;
+    const conteneur = document.getElementById(`clotures-${course.nom}`);
+    if (!conteneur) return;
 
-        const coureurs = course.vagues.flatMap(v => v.coureurs);
-        const total    = coureurs.length;
-        if (total === 0) return;
+    const coureurs = course.vagues.flatMap(v => v.coureurs);
+    const total    = coureurs.length;
+    if (total === 0) return;
 
-        const termines = coureurs.filter(c => c.temps || c.abandon);
+    const termines = coureurs.filter(c => c.temps || c.abandon);
 
-        // Clôture de course
-        if (termines.length === total) {
-            const msgId = `cloture-course-${course.nom}`;
-            if (!conteneur.querySelector(`[data-msg="${msgId}"]`)) {
-                const nbFinish  = coureurs.filter(c => c.temps && !c.abandon).length;
-                const nbAbandon = coureurs.filter(c => c.abandon).length;
-
-                const article = document.createElement('article');
-                article.className    = 'cloture-msg cloture-msg--course';
-                article.dataset.msg  = msgId;
-                article.innerHTML    = `🏁 Course <strong>${course.nom}</strong> terminée — <strong>${nbFinish}</strong> coureur${nbFinish > 1 ? 's' : ''} classé${nbFinish > 1 ? 's' : ''}, <strong>${nbAbandon}</strong> abandon${nbAbandon > 1 ? 's' : ''}`;
-                conteneur.appendChild(article);
-            }
-        }
-
-        // Clôture par équipe
-        const clubs = {};
-        coureurs.forEach(c => {
-            const club = c.club ?? 'Sans club';
-            if (!clubs[club]) clubs[club] = [];
-            clubs[club].push(c);
-        });
-
-        Object.entries(clubs).forEach(([club, membres]) => {
-            const tousTermines = membres.every(c => c.temps || c.abandon);
-            if (!tousTermines) return;
-
-            const finish = membres.filter(c => c.temps && !c.abandon);
-            if (finish.length < 2) return;
-
-            if (conteneur.querySelector(`[data-club="${club}"]`)) return; // doublon
-
-            const totalSec   = finish.reduce((acc, c) => acc + this.classement.tempsEnSecondes(c.temps), 0);
-            const moyenneSec = Math.round(totalSec / finish.length);
+    // Clôture de course
+    if (termines.length === total) {
+        const msgId = `cloture-course-${course.nom}`;
+        if (!conteneur.querySelector(`[data-msg="${msgId}"]`)) {
+            const nbFinish  = coureurs.filter(c => c.temps && !c.abandon).length;
+            const nbAbandon = coureurs.filter(c => c.abandon).length;
 
             const article = document.createElement('article');
-            article.className    = 'cloture-msg cloture-msg--equipe';
-            article.dataset.club = club;
-            article.dataset.msg  = `cloture-equipe-${course.nom}-${club}`;
-            article.innerHTML    = `🏆 Classement équipe <strong>${club}</strong> définitif pour le ${course.nom} — Score moyen : <strong>${this.classement.secondesEnTemps(moyenneSec)}</strong>`;
+            article.className   = 'cloture-msg cloture-msg--course';
+            article.dataset.msg = msgId;
+            article.innerHTML   = `🏁 Course <strong>${course.nom}</strong> terminée — <strong>${nbFinish}</strong> coureur${nbFinish > 1 ? 's' : ''} classé${nbFinish > 1 ? 's' : ''}, <strong>${nbAbandon}</strong> abandon${nbAbandon > 1 ? 's' : ''}`;
             conteneur.appendChild(article);
-        });
+        }
     }
+
+    // Clôture par équipe
+    const clubs = {};
+    coureurs.forEach(c => {
+        const club = c.club ?? 'Sans club';
+        if (!clubs[club]) clubs[club] = [];
+        clubs[club].push(c);
+    });
+
+    Object.entries(clubs).forEach(([club, membres]) => {
+        // Le club est définitif seulement quand tous ses coureurs ont un résultat
+        const tousTermines = membres.every(c => c.temps || c.abandon);
+        if (!tousTermines) return;
+
+        // Éviter le doublon si le message existe déjà
+        if (conteneur.querySelector(`[data-club="${club}"]`)) return;
+
+        // ✅ Déléguer le calcul à Classement (gère aussi le filtre < 2 finish)
+        const equipesTerminees = this.classement.calculerClassementEquipes(membres);
+        if (equipesTerminees.length === 0) return; // club avec < 2 finish → pas de classement équipe
+
+        const { scoreMoyen } = equipesTerminees[0];
+
+        const article = document.createElement('article');
+        article.className    = 'cloture-msg cloture-msg--equipe';
+        article.dataset.club = club;
+        article.dataset.msg  = `cloture-equipe-${course.nom}-${club}`;
+        article.innerHTML    = `🏆 Classement équipe <strong>${club}</strong> définitif pour le ${course.nom} — Score moyen : <strong>${scoreMoyen}</strong>`;
+        conteneur.appendChild(article);
+    });
+}
 
     // ─────────────────────────────────────────────────────────
     // Recherche
@@ -297,8 +295,8 @@ class App {
         rows.forEach(row => {
             if (!query) { row.hidden = false; visible++; return; }
 
-            const nom       = (row.querySelector('.coureur-nom')?.textContent       ?? '').toLowerCase();
-            const equipe    = (row.querySelector('.coureur-equipe')?.textContent    ?? '').toLowerCase();
+            const nom = (row.querySelector('.coureur-nom')?.textContent ?? '').toLowerCase();
+            const equipe = (row.querySelector('.coureur-equipe')?.textContent ?? '').toLowerCase();
             const categorie = (row.querySelector('.coureur-categorie')?.textContent ?? '').toLowerCase();
 
             const match = nom.includes(query) || equipe.includes(query) || categorie.includes(query);
@@ -368,14 +366,17 @@ class App {
     }
 
     async fetchTemps(dossard) {
-        const response = await fetch(`${API_TEMPS}?dossard=${dossard}`);
+        const response = await fakeFetch(dossard);
+        /*
+        const response = await fetch(`${this.#API_TEMPS}?dossard=${dossard}`);
+        */
         if (!response.ok) throw new Error(`Erreur HTTP ${response.status}`);
         return await response.json();
     }
 
     applyResult(courseNom, vagueId, resultat) {
-        const course  = this.courses.find(c => c.nom === courseNom);
-        const vague   = course.vagues.find(v => v.vid === vagueId);
+        const course = this.courses.find(c => c.nom === courseNom);
+        const vague = course.vagues.find(v => v.vid === vagueId);
         const coureur = vague.coureurs.find(c => c.dossard === resultat.dossard);
         if (!coureur) return;
 
@@ -383,14 +384,14 @@ class App {
             coureur.abandon = true;
             delete coureur.temps;
         } else {
-            coureur.temps   = resultat.temps;
+            coureur.temps = resultat.temps;
             coureur.abandon = false;
         }
     }
 
     activateNextVague(courseNom, vagueId) {
-        const course    = this.courses.find(c => c.nom === courseNom);
-        const index     = course.vagues.findIndex(v => v.vid === vagueId);
+        const course = this.courses.find(c => c.nom === courseNom);
+        const index = course.vagues.findIndex(v => v.vid === vagueId);
         const nextVague = course.vagues[index + 1];
         if (!nextVague) return;
 
@@ -411,7 +412,7 @@ class App {
                 );
                 if (!button) return;
 
-                const total    = vague.coureurs.length;
+                const total = vague.coureurs.length;
                 const termines = vague.coureurs.filter(c => c.temps || c.abandon).length;
 
                 button.classList.remove('btn--vague-active', 'running', 'done');
@@ -460,8 +461,8 @@ class App {
                 this.hideLoading();
             })
             .catch(() => {
-                document.querySelector('#loading-title').textContent =
-                    "Impossible de charger les courses.";
+                document.querySelector('#loading-title').textContent = "Impossible de charger les courses.";
+                    setTimeout(() => this.hideLoading(), 3000);
             });
     }
 
@@ -477,9 +478,9 @@ class App {
 
     resetVagueButtons() {
         document.querySelectorAll('.btn--vague').forEach(btn => {
-            const courseNom           = btn.dataset.course;
+            const courseNom = btn.dataset.course;
             const boutonsDeCetteCourse = document.querySelectorAll(`.btn--vague[data-course="${courseNom}"]`);
-            const estPremier          = boutonsDeCetteCourse[0] === btn;
+            const estPremier = boutonsDeCetteCourse[0] === btn;
 
             btn.classList.remove('done', 'running', 'btn--vague-active');
             if (estPremier) {

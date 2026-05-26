@@ -928,15 +928,63 @@ export const fakeCourse = [
 ]
 export const fakeTemps = { "dossard": 412, "temps": "00:42:17" }
 
-// Remplace fakeFetch par :
 export const fakeFetch = (dossard) => {
     return new Promise((resolve) => {
+
         const delay = Math.random() * 5000;
+
         setTimeout(() => {
-            resolve(new Response(JSON.stringify({ dossard, temps: "00:42:17" }), {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-            }));
+
+            // 15% d'abandon
+            const abandon = Math.random() < 0.15;
+
+            let data;
+
+            if (abandon) {
+
+                data = {
+                    dossard,
+                    abandon: true
+                };
+
+            } else {
+
+                // Temps aléatoire entre 40 min et 1h30
+                const minSeconds = 40 * 60; // 2400
+                const maxSeconds = 90 * 60; // 5400
+
+                const totalSeconds =
+                    Math.floor(
+                        Math.random() * (maxSeconds - minSeconds + 1)
+                    ) + minSeconds;
+
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                const temps =
+                    String(hours).padStart(2, '0') + ':' +
+                    String(minutes).padStart(2, '0') + ':' +
+                    String(seconds).padStart(2, '0');
+
+                data = {
+                    dossard,
+                    temps
+                };
+            }
+
+            resolve(
+                new Response(
+                    JSON.stringify(data),
+                    {
+                        status: 200,
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                )
+            );
+
         }, delay);
     });
 };
